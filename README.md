@@ -15,10 +15,9 @@
 
 ---
 
-### 🧩 Installation & Running the Project
-Explain the steps required to set up the project locally.  
-Include instructions for:
+### 🧩 Installation
 - Cloning the repository  
+    - clone the repo with `git clone https://github.com/ahsanm7911/ghar_ka_zaiqa.git`
 - Installing backend dependencies
     - Navigate to the backend folder
     - create a **.env** file and put your email details shown in example
@@ -37,5 +36,4 @@ Include instructions for:
     - Navigate to the **web-fronted** folder.
     - install dependencies with `npm install` 
     - run the frontend server with `npm start`
-    - frontend server runs at **http://localhost:3000/**
-- Setting up configuration files (like `.env`)  
+    - frontend server runs at **http://localhost:3000/** 
