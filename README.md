@@ -21,7 +21,7 @@ Include instructions for:
 - Cloning the repository  
 - Installing backend dependencies
     - Navigate to the backend folder
-    - install virtualenv with ```pip install virtualenv
+    - install virtualenv with `pip install virtualenv`
 - Installing frontend dependencies  
 - Setting up configuration files (like `.env`)  
 
