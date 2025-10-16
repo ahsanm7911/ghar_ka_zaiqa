@@ -1,0 +1,25 @@
+.login-page {
+  position: relative;
+  min-height: 100vh;
+  background: url('https://images.unsplash.com/photo-1697276063790-a68a966b12f7?q=80') no-repeat center center/cover;
+}
+
+.login-page .overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    rgba(224, 122, 95, 0.7),  /* Rustic Orange overlay */
+    rgba(224, 122, 95, 0.7)
+  );
+  z-index: 1;
+}
+
+.login-container {
+  position: relative;
+  z-index: 2; /* keeps form above overlay */
+  max-width: 400px;
+  width: 100%;
+}

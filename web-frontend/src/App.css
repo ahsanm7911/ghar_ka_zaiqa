@@ -1,0 +1,33 @@
+/* Primary Buttons (Rustic Orange) */
+.btn-primary,
+.btn-warning,
+.btn-success {
+  background-color: #E07A5F !important; /* Rustic Orange */
+  border-color: #E07A5F !important;
+  color: #FDFDFD !important; /* Creamy White text */
+  transition: all 0.2s ease-in-out;
+}
+
+.btn-primary:hover,
+.btn-warning:hover,
+.btn-success:hover {
+  background-color: #cc6950 !important; /* Slightly darker Rustic Orange */
+  border-color: #cc6950 !important;
+  color: #FDFDFD !important;
+}
+
+/* Secondary Buttons (Olive Green) */
+.btn-secondary,
+.btn-outline-warning {
+  background-color: #81B29A !important; /* Olive Green */
+  border-color: #81B29A !important;
+  color: #FDFDFD !important;
+  transition: all 0.2s ease-in-out;
+}
+
+.btn-secondary:hover,
+.btn-outline-warning:hover {
+  background-color: #6da78a !important; /* Slightly darker Olive Green */
+  border-color: #6da78a !important;
+  color: #FDFDFD !important;
+}
