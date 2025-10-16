@@ -5,9 +5,13 @@
     - [Running the Project](#running-the-project)
 
 ### 🔧 Prerequisites
-Describe what software, tools, and dependencies need to be installed before setting up this project.  
-For example: Python version, Node.js version, database requirements, or any global packages.  
-Mention links to installation guides if helpful.
+- Python 3.10+
+
+- Node.js 18+
+
+- pip / virtualenv
+
+- Git
 
 ---
 
@@ -15,7 +19,9 @@ Mention links to installation guides if helpful.
 Explain the steps required to set up the project locally.  
 Include instructions for:
 - Cloning the repository  
-- Installing backend dependencies  
+- Installing backend dependencies
+    - Navigate to the backend folder
+    - install virtualenv with ```pip install virtualenv
 - Installing frontend dependencies  
 - Setting up configuration files (like `.env`)  
 
