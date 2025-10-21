@@ -90,7 +90,6 @@ class Chef(models.Model):
 class Order(models.Model):
     STATUS_CHOICES = [
         ('open', 'Open'),
-        ('bidding', 'Bidding'),
         ('accepted', 'Accepted'),
         ('preparing', 'Preparing'),
         ('delivered', 'Delivered'),
@@ -132,6 +131,9 @@ class Bid(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.chef.full_name} (id: {self.chef.id}) placed bid on {self.order.title} (id: {self.order.id})"
 
     class Meta:
         unique_together = ('order', 'chef') # A chef can bid once per order

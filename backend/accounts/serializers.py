@@ -73,7 +73,22 @@ class LoginSerializer(serializers.Serializer):
     password = serializers.CharField()
 
     def validate(self, data):
-        user = authenticate(email=data['email'], password=data['password'])
-        if user and user.is_active:
-            return user
-        raise serializers.ValidationError("Incorrect Credentials")
+        email = data.get('email')
+        password = data.get('password')
+
+        if email and password:
+            user = authenticate(email=email, password=password)
+
+            if user is None:
+                try:
+                    existing_user = CustomUser.objects.get(email=email)
+                    if not existing_user.is_active:
+                        raise serializers.ValidationError({'detail': "account not activated or disabled."})
+                except CustomUser.DoesNotExist:
+                    pass
+                raise serializers.ValidationError({'detail': "Invalid email or password."})
+        else:
+            raise serializers.ValidationError({'detail': "Both email and password are required."})
+        
+        data['user'] = user
+        return data

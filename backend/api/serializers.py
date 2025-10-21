@@ -3,15 +3,19 @@ from accounts.models import Customer, Chef, Order, Bid, ChatMessage, Review, Not
 
 
 class OrderSerializer(serializers.ModelSerializer):
-    customer_name = serializers.CharField(source="customer.user.full_name", read_only=True)
+    customer_name = serializers.CharField(source="customer.full_name", read_only=True)
+    total_bids = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
         fields = '__all__'
 
+    def get_total_bids(self, obj):
+        return Bid.objects.filter(order=obj).count()
+
 
 class BidSerializer(serializers.ModelSerializer):
-    chef_name = serializers.CharField(source="chef.user.full_name", read_only=True)
+    chef_name = serializers.CharField(source="chef.full_name", read_only=True)
 
     class Meta:
         model = Bid
@@ -19,7 +23,7 @@ class BidSerializer(serializers.ModelSerializer):
 
 
 class ChatMessageSerializer(serializers.ModelSerializer):
-    sender_name = serializers.CharField(source="sender.full_name", read_only=True)
+    sender_name = serializers.CharField(source="sender.email", read_only=True)
 
     class Meta:
         model = ChatMessage

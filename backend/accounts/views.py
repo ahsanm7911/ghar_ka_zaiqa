@@ -31,17 +31,17 @@ def register_view(request):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def login_view(request):
-    print(f"Request: {request}")
     serializer = LoginSerializer(data=request.data)
     if serializer.is_valid():
-        user = serializer.validated_data
+        user = serializer.validated_data['user']
         token, created = Token.objects.get_or_create(user=user)
         return Response({
             'token': token.key,
             'user': {
                 'id': user.id,
                 'email': user.email,
-                'user_type': user.user_type
+                'user_type': user.user_type,
+                'is_active': user.is_active
             }
         })
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
