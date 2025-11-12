@@ -39,8 +39,8 @@ venv.bak/
 !example.env
 
 # Migrations (optional — uncomment if you prefer not to track generated migrations)
-# */migrations/
-# */migrations/__pycache__/
+*/migrations/
+*/migrations/__pycache__/
 
 # Coverage and testing
 .coverage

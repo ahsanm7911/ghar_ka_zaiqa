@@ -1,9 +1,59 @@
 import json
-from channels.generic.websocket import AsyncWebsocketConsumer
+from channels.generic.websocket import AsyncJsonWebsocketConsumer, AsyncWebsocketConsumer
 from django.contrib.auth.models import AnonymousUser
 from asgiref.sync import sync_to_async
 from accounts.models import CustomUser, ChatMessage, Order
 
+
+class OrderConsumer(AsyncJsonWebsocketConsumer):
+    async def connect(self):
+        user = self.scope['user']
+        print("User ob: ", user)
+        if user.is_authenticated:
+            # Join a global orders group
+            await self.channel_layer.group_add("orders", self.channel_name)
+
+            # Join a personal group 
+            await self.channel_layer.group_add(f"user_{user.id}", self.channel_name)
+
+            await self.accept()
+            print(f"Websocket connected for user {user.id}")
+        else:
+            # Reject unauthenticated socket
+            await self.close()
+
+        
+
+    async def disconnect(self, close_code):
+        await self.channel_layer.group_discard("orders", self.channel_name)
+
+    async def receive_json(self, content):
+        # optional - if client sends something 
+        pass
+
+    async def order_update(self, event):
+        await self.send_json({
+            "event": event.get("event", "order_update"), 
+            "data": event["data"]
+        })
+
+    async def bid_placed(self, event):
+        """When a chef places a new bid."""
+        print("📨 Bid placed event:", event["data"])
+        await self.send_json({
+            "event": "bid_placed",
+            "data": event["data"],
+        })
+
+    async def bid_accepted(self, event):
+        """
+        Handle accepted bid notifications.
+        """
+        print("Bid accepted event received:", event["data"])
+        await self.send_json({
+            "event": "bid_accepted",
+            "data": event["data"]
+        })
 
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):

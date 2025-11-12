@@ -3,11 +3,11 @@ import { View, Text, ActivityIndicator, TouchableOpacity, ScrollView } from "rea
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import theme from "../../utils/theme";
-import api from "../../utils/api";
+import theme from "../../../utils/theme";
+import api from "../../../utils/api";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import { showErrorToast, showSuccessToast, showInfoToast } from "../../utils/toast";
-import { getAuthData } from "../../utils/auth";
+import { showErrorToast, showSuccessToast, showInfoToast } from "../../../utils/toast";
+import { getAuthData } from "../../../utils/auth";
 
 export default function OrderDetail() {
   const router = useRouter();
@@ -28,6 +28,7 @@ export default function OrderDetail() {
         api.get(`api/orders/${id}/bids/`, authInfo),
       ])
       setOrder(orderRes.data);
+      console.log("Order value: ", order);
       setBids(bidsRes.data);
     } catch (error) {
       console.error(error.response?.data || error.message);
@@ -68,6 +69,43 @@ export default function OrderDetail() {
       setLoadingBidId(null);
     }
   };
+
+  // Mark order as complete 
+  const handleMarkComplete = async () => {
+    try {
+      setLoading(true);
+      const response = await api.post(`api/orders/${order.id}/complete/`);
+
+      console.log("Order completed: ", response.data);
+      setOrderStatus("completed");
+      showSuccessToast("Order marked as complete!");
+      setReviewModalVisible(true); // open rating modal 
+    } catch (error) {
+      console.error("Error marking complete: ", error.response?.data || error.message);
+      showErrorToast(error.response?.data.detail || "Unable to mark order as complete");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Submit review 
+  const handleSubmitReview = async () => {
+    try {
+      setSubmittingReview(true);
+      await api.post(`api/orders/${order.id}/review/`, {
+        rating, comment
+      });
+      showSuccessToast("Thank you for your feedback!");
+      setReviewModalVisible(false);
+      setRating(0);
+      setComment("");
+    } catch (error) {
+      console.error("Review error: ", error.response?.data || error.message);
+      showErrorToast("Failed to submite review");
+    } finally {
+      setSubmittingReview(false);
+    }
+  }
 
   useEffect(() => {
     fetchOrderDetail();
@@ -128,10 +166,50 @@ export default function OrderDetail() {
               <Text style={{ fontWeight: "bold" }}>Preferred Delivery:</Text>{" "}
               {new Date(order.preferred_delivery_time).toLocaleString()}
             </Text>
-            <Text style={{ color: theme.colors.text }}>
-              <Text style={{ fontWeight: "bold" }}>Status:</Text> {order.status}
+            <Text style={{ color: theme.colors.text}}>Status: 
+              <Text style={{ fontWeight: "bold", color: theme.colors.oliveGreen}}>
+                 {order.status.toLowerCase().split(' ').map(word => " " + word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                </Text>
             </Text>
           </View>
+
+
+          {order?.review && (
+                    <View
+                        style={{
+                            backgroundColor: theme.colors.card,
+                            borderRadius: 12,
+                            padding: 16,
+                            marginTop: 20,
+                            shadowColor: "#000",
+                            shadowOpacity: 0.1,
+                            shadowRadius: 4,
+                        }}
+                    >
+                        <Text style={{ fontSize: 18, fontWeight: "700", color: theme.colors.text }}>
+                            Your Feedback
+                        </Text>
+
+                        <Text style={{ color: theme.colors.textSecondary, marginTop: 4 }}>
+                            Rating: ⭐ {order.review.rating} / 5
+                        </Text>
+
+                        {order.review.comment ? (
+                            <Text style={{ color: theme.colors.text, marginTop: 6 }}>
+                                "{order.review.comment}"
+                            </Text>
+                        ) : (
+                            <Text style={{ color: theme.colors.textSecondary, marginTop: 6 }}>
+                                No written feedback provided.
+                            </Text>
+                        )}
+
+                        <Text style={{ color: theme.colors.textSecondary, marginTop: 8, fontSize: 12 }}>
+                            Reviewed on {new Date(order.review.created_at).toLocaleString()}
+                        </Text>
+                    </View>
+                )}
+
 
           {/* Bids Section */}
           <View style={{ marginTop: 24 }}>
@@ -153,10 +231,13 @@ export default function OrderDetail() {
                     <Text style={{ fontWeight: "bold" }}>Chef:</Text> {bid.chef_name}
                   </Text>
                   <Text style={{ color: theme.colors.text }}>
+                    <Text style={{ fontWeight: "bold" }}>Rating:</Text> ⭐ {bid.chef_rating} ({bid.chef_order_count})
+                  </Text>
+                  <Text style={{ color: theme.colors.text }}>
                     <Text style={{ fontWeight: "bold" }}>Price:</Text> Rs. {bid.proposed_price}
                   </Text>
                   <Text style={{ color: theme.colors.text }}>
-                    <Text style={{ fontWeight: "bold" }}>Delivery:</Text> {bid.delivery_estimate} hrs
+                    <Text style={{ fontWeight: "bold" }}>Delivery:</Text> within {bid.delivery_estimate.slice(-2)} hrs
                   </Text>
 
                   {bid.status === "pending" && (

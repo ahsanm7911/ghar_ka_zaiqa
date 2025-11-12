@@ -75,7 +75,7 @@ export default function CreateOrder() {
 
         try {
             setLoading(true);
-            const response = await api.post("api/orders/create/", form);
+            await api.post("api/orders/create/", form);
             showSuccessToast("Order created successfully.");
             router.replace("/customer-dashboard");
         } catch (error) {
@@ -112,6 +112,8 @@ export default function CreateOrder() {
                             {field.replace("_", " ").toUpperCase()}
                         </Text>
                         <TextInput
+                            multiline={field === "description" || field === "delivery_address"}
+                            numberOfLines={field === "description" || field === "delivery_address" ? 5 : 1}
                             placeholder={`Enter ${field.replace("_", " ")}`}
                             value={form[field]}
                             onChangeText={(text) => handleChange(field, text)}
@@ -121,6 +123,8 @@ export default function CreateOrder() {
                                 borderRadius: 8,
                                 padding: 10,
                                 backgroundColor: theme.colors.card,
+                                textAlignVertical: field === "description" || field === "delivery_address" ? "top" : "center",
+                                height: field === "description" || field === "delivery_address" ? 120 : 45,
                             }}
                             placeholderTextColor={theme.colors.textSecondary}
                         />

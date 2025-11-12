@@ -1,6 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils.translation import gettext_lazy as _
+from django.db.models import Avg, Count
 # Create your models here.
 
 class CustomUserManager(BaseUserManager):
@@ -74,10 +76,18 @@ class Chef(models.Model):
     specialty = models.CharField(max_length=255, blank=True, null=True)  # e.g., Italian, Vegan
     years_of_experience = models.PositiveIntegerField(default=0)
     certification = models.CharField(max_length=255, blank=True, null=True)  # e.g., culinary degrees
-    average_rating = models.DecimalField(max_digits=3, decimal_places=2, default=0.0)
     total_orders = models.PositiveIntegerField(default=0)
     delivery_radius_km = models.PositiveIntegerField(default=10)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    @property 
+    def orders_count(self):
+        return self.accepted_orders.all().count()
+
+    @property
+    def rating(self):
+        return round(self.reviews.aggregate(Avg("rating"))["rating__avg"] or 0, 1)
+
 
     class Meta:
         verbose_name = 'Chef'
@@ -96,24 +106,65 @@ class Order(models.Model):
         ('completed', 'Completed'),
         ('cancelled', 'Cancelled'),
     ]
+    FOOD_CATEGORIES = [
+        ('grain',     'Grain'),
+        ('meat',      'Meat'),
+        ('seafood',   'Seafood'),
+        ('vegetable', 'Vegetable'),
+        ('fruit',     'Fruit'),
+        ('dairy',     'Dairy'),
+        ('legume',    'Legume'),
+        ('nut_seed',  'Nuts & Seeds'),
+        ('egg',       'Egg'),
+        ('oil_fat',   'Oils & Fats')
+    ]
     
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='orders')
     title = models.CharField(max_length=200)
     description = models.TextField()
+    # category = models.CharField(choices=FOOD_CATEGORIES, default='n/a')
     max_budget = models.DecimalField(max_digits=8, decimal_places=2)
     delivery_address = models.TextField()
     preferred_delivery_time = models.DateTimeField()
+    accepted_chef = models.ForeignKey(
+        Chef, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='accepted_orders')
     image = models.ImageField(upload_to='orders/', blank=True, null=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='open')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        ordering = ['-created_at']
         verbose_name = 'Order'
         verbose_name_plural = 'Orders'
+        
 
     def __str__(self):
         return f"{self.title} - {self.description[:100]}"
+    
+class Wallet(models.Model):
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name="wallet")
+    balance = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+
+    def __str__(self):
+        return f"{self.user.email} - Balance: {self.balance:.2f}"
+
+class Transaction(models.Model):
+    TRANSACTION_TYPES = [
+        ('credit', 'Credit'),
+        ('debit', 'Debit'),
+        ('commission', 'Commission'),
+    ]
+    wallet = models.ForeignKey(Wallet, on_delete=models.CASCADE, related_name="transactions")
+    transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    description = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.transaction_type} - {self.amount} ({self.wallet.user.email})"
+
     
 class Bid(models.Model):
     STATUS_CHOICES = [
@@ -148,13 +199,25 @@ class ChatMessage(models.Model):
     is_read = models.BooleanField(default=False)
 
 
+
 class Review(models.Model):
     order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name='review')
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
-    chef = models.ForeignKey(Chef, on_delete=models.CASCADE)
-    rating = models.PositiveIntegerField(default=5)
+    chef = models.ForeignKey(Chef, on_delete=models.CASCADE, related_name='reviews')
+    rating = models.FloatField(default=0.0, 
+                               validators=[MinValueValidator(0.0), MaxValueValidator(5.0)], 
+                               help_text="Average rating from 0.0 to 5.0")
     comment = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Review'
+        verbose_name_plural = 'Reviews'
+
+    def __str__(self):
+        return f"Review for {self.chef.full_name} ({self.rating})"
 
 class Notification(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='notifications')
@@ -162,3 +225,7 @@ class Notification(models.Model):
     type = models.CharField(max_length=50, blank=True, null=True)  # e.g. "bid", "chat", "order"
     is_read = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Notification'
+        verbose_name_plural = 'Notifications'

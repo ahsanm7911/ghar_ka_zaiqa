@@ -25,8 +25,8 @@ export default function SplashScreen() {
             // Redirect to correct dashboard
             router.replace(
               authData.userType === "chef"
-                ? "/chef-dashboard"
-                : "/customer-dashboard"
+                ? "/chef-dashboard" : authData.userType === 'customer' 
+                ? "/customer-dashboard" : '/admin-dashboard'
             );
           } else {
             router.replace("/login");

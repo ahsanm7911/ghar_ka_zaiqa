@@ -42,11 +42,11 @@ export default function Login() {
 
             // If the request succeeds (status 200)
             const { token, user } = response.data;
-            await saveAuthData(token, user.user_type);
+            await saveAuthData(token, JSON.stringify(user), user.user_type);
             
             showSuccessToast("Welcome back!")
             // Redirect based on user type
-            router.replace(user.user_type === "chef" ? "/chef-dashboard" : "/customer-dashboard");
+            router.replace(user.user_type === "chef" ? "/chef-dashboard" : user.user_type === 'customer' ? "/customer-dashboard" : '/admin-dashboard');
 
         } catch (error) {
             console.log("Login error:", error.response?.data);

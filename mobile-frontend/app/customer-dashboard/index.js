@@ -1,27 +1,38 @@
-import React, { useEffect, useState } from "react";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
 import {
-  View,
-  Text,
-  TouchableOpacity,
   ActivityIndicator,
   FlatList,
+  Modal,
   RefreshControl,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import { useRouter } from "expo-router";
-import theme from "../../utils/theme";
+import { SafeAreaView } from "react-native-safe-area-context";
+import StarRating from "react-native-star-rating-widget";
+import { useWebSocket } from "../../contexts/WebSocketContext";
 import api from "../../utils/api";
 import { clearAuthData } from "../../utils/auth";
-import { showErrorToast, showSuccessToast, showInfoToast } from "../../utils/toast";
+import theme from "../../utils/theme";
+import { showErrorToast, showInfoToast, showSuccessToast } from "../../utils/toast";
 
 export default function CustomerDashboard() {
+  const { ws, messages, connected } = useWebSocket();
+
   const router = useRouter();
   const [orders, setOrders] = useState([]);
+  const [currentOrderId, setCurrentOrderId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedFilter, setSelectedFilter] = useState("open");
   const [refreshing, setRefreshing] = useState(false);
+  const [reviewModalVisible, setReviewModalVisible] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState("");
+  const [submittingReview, setSubmittingReview] = useState(false);
 
   const filters = [
     { key: "open", label: "Open Orders" },
@@ -44,74 +55,226 @@ export default function CustomerDashboard() {
   };
 
   const handleLogout = async () => {
-    await clearAuthData();
-    showSuccessToast("Logged out successfully.");
-    router.replace("/login");
+    try {
+      await api.post("accounts/logout/");
+      ws?.close();
+      await clearAuthData();
+      showSuccessToast("Logged out successfully.");
+      router.replace("/login");
+    } catch (error) {
+      console.error("Logout error: ", error.response?.data || error.message);
+      showErrorToast("Something went wrong while trying to logout, try again later.");
+    }
   };
 
   useEffect(() => {
     fetchOrders();
+    if (!connected) {
+      console.log("Connecting to live updates...");
+      return;
+    };
+    console.log("Connected to live updates.");
+    ws.onmessage = (event) => {
+      // console.log("Event value: ", event);
+      const res = JSON.parse(event.data);
+      console.log("Message received: ", res);
+      if (res.event === 'bid_placed') {
+        showInfoToast(`You have received a new bid by chef: ${res.data.chef_name}`, 'New Bid');
+        fetchOrders();
+      } else if (res.event == 'order_delivered') {
+        showInfoToast(`Your order ${res.data.title} was fulfilled.`, "Order fulfilled");
+        fetchOrders();
+      } else if (res.event == 'order_accepted') {
+        showInfoToast(`Your order is assigned to ${res.data.accepted_chef_name}`, "Order assigned")
+        fetchOrders();
+      } else if (res.event == 'order_completed') {
+        setReviewModalVisible(true);
+      }
+    }
   }, []);
 
-  const filteredOrders = orders.filter((order) => order.status === selectedFilter);
+  const filteredOrders = orders.filter((order) => {
+    if (selectedFilter === "accepted") {
+      return order.status === "accepted" || order.status === "delivered";
+    }
+    return order.status === selectedFilter;
+  });
+
 
   const onRefresh = () => {
     setRefreshing(true);
     fetchOrders();
   };
 
-  const renderOrderItem = ({ item }) => (
-    <TouchableOpacity
-      onPress={() => router.push(`/customer-dashboard/${item.id}`)}
-      style={{
-        backgroundColor: theme.colors.card,
-        marginVertical: 8,
-        marginHorizontal: 16,
-        borderRadius: 12,
-        padding: 16,
-        shadowColor: "#000",
-        shadowOpacity: 0.1,
-        shadowOffset: { width: 0, height: 2 },
-        elevation: 3,
-      }}
-    >
-      <Animated.View entering={FadeInDown.duration(400)}>
-        <Text style={{ fontSize: 18, fontWeight: "600", color: theme.colors.text }}>
-          {item.title}
-        </Text>
-        <Text style={{ color: theme.colors.textSecondary, marginTop: 4 }}>
-          Budget: Rs. {item.max_budget}
-        </Text>
-        <Text style={{ color: theme.colors.textSecondary }}>
-          Status: {item.status.replace("_", " ")}
-        </Text>
-        <Text style={{ color: theme.colors.textSecondary }}>
-          Bids: {item.total_bids || 0}
-        </Text>
-        {item.status === 'accepted' && (
+  // 1️⃣ Mark order as complete
+  const handleMarkComplete = async (order_id) => {
+    try {
+      setLoading(true);
+      const response = await api.post(`api/orders/${order_id}/complete/`);
+      console.log("Order Completed:", response.data);
+      showSuccessToast("Order marked as complete!");
+      setCurrentOrderId(order_id);
+    } catch (error) {
+      console.error("Error marking complete:", error.response?.data || error.message);
+      showErrorToast(error.response?.data?.detail || "Unable to mark order as complete");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-          <TouchableOpacity
-          onPress={() => showInfoToast("This funcionality hasn't been implemented yet.")}
-          style={{
-            backgroundColor: theme.colors.primary,
-            paddingVertical: 10,
-            borderRadius: 8,
-            marginTop: 10,
-          }}
-          >
-            <Text
+  // 2️⃣ Submit review
+  const handleSubmitReview = async (order_id) => {
+    try {
+      setSubmittingReview(true);
+      console.log(`Rating: ${rating}, Comment: ${comment}`);
+      await api.post(
+        `api/orders/${order_id}/review/`,
+        { rating, comment },
+      );
+      showSuccessToast("Thank you for your feedback!");
+      setReviewModalVisible(false);
+      setRating(0);
+      setComment("");
+      setCurrentOrderId(null);
+      fetchOrders();
+    } catch (error) {
+      console.error("Review error:", error.response?.data || error.message);
+      showErrorToast("Failed to submit review");
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
+
+  const renderOrderItem = ({ item }) => (
+    <View>
+      <TouchableOpacity
+        onPress={() => router.push(`/customer-dashboard/order/${item.id}`)}
+        style={{
+          backgroundColor: theme.colors.card,
+          marginVertical: 8,
+          marginHorizontal: 16,
+          borderRadius: 12,
+          padding: 16,
+          shadowColor: "#000",
+          shadowOpacity: 0.1,
+          shadowOffset: { width: 0, height: 2 },
+          elevation: 3,
+        }}
+      >
+        <Animated.View entering={FadeInDown.duration(400)}>
+          <Text style={{ fontSize: 18, fontWeight: "600", color: theme.colors.text }}>
+            {item.title}
+          </Text>
+          <Text style={{ color: theme.colors.textSecondary, marginTop: 4 }}>
+            Budget: Rs. {item.max_budget}
+          </Text>
+          <Text style={{ color: theme.colors.textSecondary }}>
+            Status: {item.status.replace("_", " ") === 'delivered' ? "Delivering" : item.status.replace("_", " ")}
+          </Text>
+          <Text style={{ color: theme.colors.textSecondary }}>
+            Bids: {item.total_bids || 0}
+          </Text>
+          {item.status === 'delivered' && (
+
+            <TouchableOpacity
+              onPress={() => handleMarkComplete(item.id)}
               style={{
-                color: "#fff",
-                textAlign: "center",
-                fontWeight: "600",
+                backgroundColor: theme.colors.primary,
+                paddingVertical: 10,
+                borderRadius: 8,
+                marginTop: 10,
               }}
-              >
-              Mark as Complete
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+
+                <Text
+                  style={{
+                    color: "#fff",
+                    textAlign: "center",
+                    fontWeight: "600",
+                  }}
+                >
+                  Mark as Complete
+                </Text>
+              )}
+            </TouchableOpacity>
+          )}
+        </Animated.View>
+      </TouchableOpacity>
+
+      <Modal visible={reviewModalVisible} animationType="slide" transparent>
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.4)",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <View
+            style={{
+              width: "85%",
+              backgroundColor: theme.colors.card,
+              borderRadius: 12,
+              padding: 20,
+            }}
+          >
+            <Text style={{ fontSize: 18, fontWeight: "700", color: theme.colors.text }}>
+              Rate your Chef
             </Text>
-        </TouchableOpacity>
-        )}
-      </Animated.View>
-    </TouchableOpacity>
+
+            <StarRating
+              rating={rating}
+              onChange={setRating}
+              color={theme.colors.primary}
+              starSize={32}
+              style={{ marginVertical: 10 }}
+            />
+
+            <TextInput
+              placeholder="Write a short review (optional)"
+              placeholderTextColor={theme.colors.border}
+              value={comment}
+              onChangeText={setComment}
+              multiline
+              style={{
+                borderWidth: 1,
+                borderColor: theme.colors.border,
+                borderRadius: 8,
+                padding: 10,
+                minHeight: 80,
+                color: theme.colors.text,
+                marginBottom: 15,
+              }}
+            />
+
+            <TouchableOpacity
+              style={{
+                backgroundColor: theme.colors.primary,
+                paddingVertical: 10,
+                borderRadius: 8,
+                marginBottom: 10,
+              }}
+              onPress={() => handleSubmitReview(currentOrderId)}
+              disabled={submittingReview}
+            >
+              {submittingReview ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={{ color: "#fff", textAlign: "center", fontWeight: "600" }}>
+                  Submit Review
+                </Text>
+              )}
+            </TouchableOpacity>
+            
+          </View>
+        </View>
+      </Modal>
+    </View>
+
   );
 
   return (
@@ -131,21 +294,31 @@ export default function CustomerDashboard() {
           Customer Dashboard
         </Text>
 
-        <TouchableOpacity onPress={handleLogout} style={{ flexDirection: "row", alignItems: "center" }}>
-          <Ionicons name="log-out-outline" size={22} color={theme.colors.lightText} />
-          <Text style={{ color: theme.colors.lightText, marginLeft: 6, fontWeight: "600" }}>Logout</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => router.push("/chat")}
+        <View
           style={{
-            backgroundColor: theme.colors.accent,
-            padding: 8,
-            borderRadius: 50,
-          }}
-        >
-          <Ionicons name="chatbubble-ellipses-outline" size={24} color={theme.colors.lightText} />
-        </TouchableOpacity>
+            flexDirection: "row",
+            alignItems: "center"
+          }}>
+          <TouchableOpacity onPress={() => router.push("/top-chefs")}>
+            <Ionicons name="restaurant-outline" size={24} color={theme.colors.lightText} />
+          </TouchableOpacity>
+
+
+          <TouchableOpacity
+            onPress={() => router.push("/chat")}
+            style={{
+              marginHorizontal: 6,
+              borderRadius: 50,
+            }}
+          >
+            <Ionicons name="chatbubble-ellipses-outline" size={24} color={theme.colors.lightText} />
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={handleLogout} style={{ flexDirection: "row", alignItems: "center" }}>
+            <Ionicons name="log-out-outline" size={24} color={theme.colors.lightText} />
+          </TouchableOpacity>
+        </View>
+
       </View>
 
       {/* Filters */}
@@ -154,7 +327,6 @@ export default function CustomerDashboard() {
           flexDirection: "row",
           justifyContent: "space-around",
           paddingVertical: 12,
-          backgroundColor: theme.colors.card,
         }}
       >
         {filters.map((filter) => (
@@ -182,6 +354,7 @@ export default function CustomerDashboard() {
         ))}
       </View>
 
+
       {/* Orders Section */}
       {loading ? (
         <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
@@ -198,7 +371,7 @@ export default function CustomerDashboard() {
         />
       ) : (
         <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-          <Text style={{ color: theme.colors.textSecondary, fontSize: 16 }}>
+          <Text style={{ color: theme.colors.secondary, fontSize: 16 }}>
             No {selectedFilter} orders found.
           </Text>
         </View>

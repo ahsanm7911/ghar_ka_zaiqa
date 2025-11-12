@@ -1,7 +1,7 @@
 import os
 import django
 from channels.routing import ProtocolTypeRouter, URLRouter
-from channels.auth import AuthMiddlewareStack
+from api.auth_middleware import TokenAuthMiddleware
 from django.core.asgi import get_asgi_application
 import api.routing
 
@@ -10,7 +10,7 @@ django.setup()
 
 application = ProtocolTypeRouter({
     "http": get_asgi_application(),
-    "websocket": AuthMiddlewareStack(
+    "websocket": TokenAuthMiddleware(
         URLRouter(
             api.routing.websocket_urlpatterns
         )
