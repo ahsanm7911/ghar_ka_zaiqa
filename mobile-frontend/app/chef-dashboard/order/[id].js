@@ -1,12 +1,12 @@
-import React, { useEffect, useState } from "react";
-import { View, Text, TouchableOpacity, ActivityIndicator, TextInput, ScrollView } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { showSuccessToast, showInfoToast, showErrorToast } from "../../../utils/toast";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import api from "../../../utils/api";
-import { Ionicons } from "@expo/vector-icons";
 import { getAuthData } from "../../../utils/auth";
 import theme from "../../../utils/theme";
+import { showErrorToast, showSuccessToast } from "../../../utils/toast";
 
 export default function OrderDetails() {
     const { id } = useLocalSearchParams(); // get order id from route
@@ -194,8 +194,11 @@ export default function OrderDetails() {
                         <TextInput
                             placeholder="Estimated delivery time (in hours)"
                             value={deliveryTime}
-                            onChangeText={setDeliveryTime}
-                            keyboardType="numeric"
+                            onChangeText={(text) => {
+                                const cleaned = text.replace(/[^0-9]/g, "");
+                                setDeliveryTime(cleaned);
+                            }}
+                            keyboardType="numer-pad"
                             style={{
                                 borderWidth: 1,
                                 borderColor: theme.colors.border,

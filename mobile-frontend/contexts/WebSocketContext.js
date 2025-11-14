@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useRef } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Platform  } from "react-native";
+import { getAuthData } from "../utils/auth";
 
 const WebSocketContext = createContext(null);
 
@@ -9,10 +10,11 @@ export const WebSocketProvider = ({ children }) => {
   const wsRef = useRef(null);
   const reconnectInterval = useRef(null);
 
-  const SERVER_URL = "ws://10.0.2.2:8000/ws/orders/"; // change if using physical device
+  const BASE_URL = Platform.OS === 'web' ? "ws://localhost:8000/" : "ws://10.0.2.2:8000/"
+  const SERVER_URL = `${BASE_URL}ws/orders/`; // change if using physical device
 
   const connectWebSocket = async () => {
-    const token = await AsyncStorage.getItem("token");
+    const { token } = await getAuthData();
     if (!token) return; 
     console.log("🔌 Attempting to connect WebSocket...");
     const socket = new WebSocket(SERVER_URL + `?token=${token}`);
