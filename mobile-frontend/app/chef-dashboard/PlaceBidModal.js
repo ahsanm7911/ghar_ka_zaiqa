@@ -105,8 +105,11 @@ export default function PlaceBidModal({ visible, onClose, order, refreshOrders }
             <TextInput
               placeholder="Estimated delivery time (in hours)"
               value={deliveryTime}
-              onChangeText={setDeliveryTime}
-              keyboardType="numeric"
+              onChangeText={(text) => {
+                const cleaned = text.replace(/[^0-9]/g, "");
+                setDeliveryTime(cleaned);
+              }}
+              keyboardType="number-pad"
               style={{
                 borderWidth: 1,
                 borderColor: theme.colors.border,

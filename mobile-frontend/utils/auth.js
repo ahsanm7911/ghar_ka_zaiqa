@@ -36,7 +36,7 @@ export const getAuthData = async () => {
       const userType = localStorage.getItem(USER_TYPE_KEY);
       return { token, user, userType };
     } else {
-      console.log("Trying to retrieve data from localStorage.")
+      console.log("Trying to retrieve data from asyncStorage.")
       const values = await AsyncStorage.multiGet([TOKEN_KEY, USER_KEY, USER_TYPE_KEY]);
       const token = values[0][1];
       const user = values[1][1];
