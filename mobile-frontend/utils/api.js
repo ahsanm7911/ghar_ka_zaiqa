@@ -1,8 +1,8 @@
 import axios from "axios";
 import { getAuthData } from "./auth";
-
+import { Platform } from "react-native";
 const api = axios.create({
-  baseURL: "http://10.0.2.2:8000/",
+  baseURL: Platform.OS === 'web' ? "http://localhost:8000/" : "http://10.0.2.2:8000/",
   timeout: 10000,
   headers: {
     "Content-Type": "application/json",

@@ -204,28 +204,30 @@ export default function ChefDashboard() {
       </View>
 
       {/* Filter Buttons */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filtersContainer}>
-        {FILTERS.map((filter) => (
-          <TouchableOpacity
-            key={filter}
-            onPress={() => setActiveFilter(filter)}
-            style={{
-              backgroundColor:
-                activeFilter === filter ? theme.colors.rusticOrange : theme.colors.oliveGreen,
-              paddingVertical: 8,
-              marginHorizontal: 6,
-              paddingHorizontal: 12,
-              height: 38,
-              borderRadius: 25,
-            }}
-          >
-            <Text style={{ color: theme.colors.creamyWhite, fontWeight: "600" }}>{filter}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      <View style={{ marginBottom: 10}}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filtersContainer}>
+          {FILTERS.map((filter) => (
+            <TouchableOpacity
+              key={filter}
+              onPress={() => setActiveFilter(filter)}
+              style={{
+                backgroundColor:
+                  activeFilter === filter ? theme.colors.rusticOrange : theme.colors.oliveGreen,
+                paddingVertical: 8,
+                marginHorizontal: 6,
+                paddingHorizontal: 12,
+                height: 38,
+                borderRadius: 25,
+              }}
+            >
+              <Text style={{ color: theme.colors.creamyWhite, fontWeight: "600" }}>{filter}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
 
 
       {loading ? (
